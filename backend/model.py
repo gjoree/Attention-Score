@@ -9,9 +9,18 @@ from scipy.ndimage import gaussian_filter1d
 MODEL_PATH = "attention_model.joblib"
 
 FEATURE_COLS = [
-    "motion", "face_area", "face_count", "audio_rms", "audio_flux",
-    "audio_zcr", "entropy", "saturation", "brightness",
-    "is_cut", "seconds_since_cut", "position",
+    # Motion
+    "motion", "motion_delta",
+    # Face
+    "face_area", "face_count", "face_centrality",
+    # Visual quality
+    "entropy", "contrast", "edge_density", "saturation", "brightness", "color_variety",
+    # Scene pacing
+    "is_cut", "seconds_since_cut", "cut_rate_10s",
+    # Audio
+    "audio_rms", "audio_flux", "audio_zcr", "spectral_centroid", "audio_delta",
+    # Context
+    "position",
 ]
 
 _model: xgb.XGBRegressor | None = None
@@ -90,11 +99,17 @@ def predict_curve(features: list[dict]) -> list[dict]:
 def _rule_based(f: dict) -> float:
     """Fallback before first training — uses known attention correlates."""
     score = (
-        f.get("motion", 0)      * 22 +
-        f.get("face_area", 0)   * 28 +
-        f.get("audio_rms", 0)   * 22 +
-        f.get("audio_flux", 0)  * 18 +
-        f.get("is_cut", 0)      * 10 +
-        (1 - f.get("position", 0)) * 15
-    ) * 1.35
+        f.get("motion", 0)           * 18 +
+        f.get("motion_delta", 0)     * 8  +
+        f.get("face_area", 0)        * 22 +
+        f.get("face_centrality", 0)  * 10 +
+        f.get("audio_rms", 0)        * 18 +
+        f.get("audio_flux", 0)       * 12 +
+        f.get("audio_delta", 0)      * 6  +
+        f.get("contrast", 0)         * 8  +
+        f.get("color_variety", 0)    * 6  +
+        f.get("cut_rate_10s", 0)     * 2  +
+        f.get("is_cut", 0)           * 6  +
+        (1 - f.get("position", 0))   * 10
+    ) * 1.1
     return min(100.0, max(0.0, score))
