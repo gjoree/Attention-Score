@@ -2,6 +2,7 @@ import { useRef, useState, useEffect, useCallback } from 'react';
 import { useAttentionTracker } from './hooks/useAttentionTracker';
 import { AttentionChart } from './components/AttentionChart';
 import { PredictionChart } from './components/PredictionChart';
+import { VideoHeatmap } from './components/VideoHeatmap';
 import { DemographicsModal } from './components/DemographicsModal';
 import { uploadVideo, pollVideoReady, saveSession, predictCurve } from './api';
 
@@ -291,6 +292,9 @@ export default function App() {
               onChange={handleFileInput}
             />
           </div>
+
+          {/* Attention heatmap — shown directly below video after prediction */}
+          <VideoHeatmap curve={predictedCurve} videoRef={videoPlayerRef} />
 
           {videoName && (
             <div className="file-badge">

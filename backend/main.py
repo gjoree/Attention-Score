@@ -33,13 +33,14 @@ DB_PATH = "sessions.db"
 
 
 def get_db() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=30, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     return conn
 
 
 def init_db() -> None:
-    conn = get_db()
+    conn = sqlite3.connect(DB_PATH, timeout=30)
+    conn.execute("PRAGMA journal_mode=WAL")  # set once — persists in the DB file
     conn.executescript("""
         CREATE TABLE IF NOT EXISTS sessions (
             id          TEXT PRIMARY KEY,

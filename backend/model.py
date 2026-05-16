@@ -1,11 +1,12 @@
 import json
 import os
 
+import joblib
 import numpy as np
 import xgboost as xgb
 from scipy.ndimage import gaussian_filter1d
 
-MODEL_PATH = "attention_model.json"
+MODEL_PATH = "attention_model.joblib"
 
 FEATURE_COLS = [
     "motion", "face_area", "face_count", "audio_rms", "audio_flux",
@@ -19,9 +20,7 @@ _model: xgb.XGBRegressor | None = None
 def _load() -> xgb.XGBRegressor | None:
     global _model
     if _model is None and os.path.exists(MODEL_PATH):
-        m = xgb.XGBRegressor()
-        m.load_model(MODEL_PATH)
-        _model = m
+        _model = joblib.load(MODEL_PATH)
     return _model
 
 
@@ -43,8 +42,8 @@ def train(sessions: list, features_by_vid: dict) -> dict:
             X.append(row)
             y.append(float(point["score"]))
 
-    if len(X) < 30:
-        return {"status": "not_enough_data", "samples": len(X), "needed": 30}
+    if len(X) < 5:
+        return {"status": "not_enough_data", "samples": len(X), "needed": 5}
 
     model = xgb.XGBRegressor(
         n_estimators=400,
@@ -57,7 +56,7 @@ def train(sessions: list, features_by_vid: dict) -> dict:
         verbosity=0,
     )
     model.fit(np.array(X), np.array(y))
-    model.save_model(MODEL_PATH)
+    joblib.dump(model, MODEL_PATH)
 
     global _model
     _model = model

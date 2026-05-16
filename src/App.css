@@ -552,6 +552,80 @@ body {
   padding: 0.15rem 0.4rem;
 }
 
+/* ── Video heatmap ── */
+.heatmap-root {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+
+.heatmap-track {
+  position: relative;
+  cursor: crosshair;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.heatmap-canvas {
+  display: block;
+  width: 100%;
+  border-radius: 5px;
+}
+
+.heatmap-playhead {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  background: #fff;
+  pointer-events: none;
+  transform: translateX(-50%);
+  box-shadow: 0 0 6px rgba(255,255,255,0.6);
+  border-radius: 2px;
+  left: 0%;
+}
+
+.heatmap-tooltip {
+  position: absolute;
+  top: -28px;
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  border-radius: 5px;
+  padding: 0.2rem 0.5rem;
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  pointer-events: none;
+  white-space: nowrap;
+  font-size: 0.72rem;
+}
+
+.ht-time { color: #888; }
+.ht-score { font-weight: 700; }
+
+.heatmap-legend {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.65rem;
+}
+
+.hl-low  { color: #ff453a; }
+.hl-high { color: #30D158; }
+
+.hl-bar {
+  flex: 1;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(to right, #ff453a, #f5a623, #30D158);
+}
+
+.hl-hint {
+  color: #333;
+  margin-left: auto;
+}
+
 /* ── Predict button & row ── */
 .predict-row {
   display: flex;
