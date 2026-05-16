@@ -1,0 +1,160 @@
+import { useEffect, useRef } from 'react';
+import {
+  Chart,
+  LineController,
+  LineElement,
+  PointElement,
+  LinearScale,
+  Filler,
+  Tooltip,
+} from 'chart.js';
+
+Chart.register(LineController, LineElement, PointElement, LinearScale, Filler, Tooltip);
+
+const DIP_THRESHOLD = 50;
+const MIN_DIP_SECS  = 2;
+
+function formatTime(s) {
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return `${m}:${sec.toString().padStart(2, '0')}`;
+}
+
+function findDips(curve) {
+  const dips = [];
+  let start = null;
+  for (let i = 0; i < curve.length; i++) {
+    const low = curve[i].score < DIP_THRESHOLD;
+    if (low && start === null) start = curve[i].t;
+    if (!low && start !== null) {
+      if (curve[i].t - start >= MIN_DIP_SECS) dips.push({ start, end: curve[i].t });
+      start = null;
+    }
+  }
+  if (start !== null && curve.at(-1).t - start >= MIN_DIP_SECS)
+    dips.push({ start, end: curve.at(-1).t });
+  return dips;
+}
+
+export function PredictionChart({ curve }) {
+  const canvasRef = useRef(null);
+  const chartRef  = useRef(null);
+
+  useEffect(() => {
+    if (!curve?.length) return;
+
+    const pointColors = curve.map(({ score }) =>
+      score >= 67 ? '#30D158' : score >= 40 ? '#f5a623' : '#ff453a'
+    );
+
+    const ctx = canvasRef.current.getContext('2d');
+    chartRef.current?.destroy();
+
+    chartRef.current = new Chart(ctx, {
+      type: 'line',
+      data: {
+        datasets: [
+          {
+            label: 'Predicted attention',
+            data: curve.map(({ t, score }) => ({ x: t, y: score })),
+            borderColor: '#30D158',
+            backgroundColor: 'rgba(48,209,88,0.07)',
+            fill: true,
+            tension: 0.45,
+            pointRadius: 3,
+            pointBackgroundColor: pointColors,
+            borderWidth: 2,
+          },
+          {
+            label: 'Threshold',
+            data: curve.map(({ t }) => ({ x: t, y: DIP_THRESHOLD })),
+            borderColor: '#ff453a44',
+            borderDash: [5, 4],
+            borderWidth: 1,
+            pointRadius: 0,
+            fill: false,
+          },
+        ],
+      },
+      options: {
+        animation: false,
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: {
+            type: 'linear',
+            title: { display: false },
+            ticks: {
+              color: '#555',
+              font: { size: 11 },
+              callback: (v) => formatTime(v),
+              maxTicksLimit: 10,
+            },
+            grid: { color: '#1e1e1e' },
+            border: { color: '#333' },
+          },
+          y: {
+            min: 0,
+            max: 100,
+            ticks: {
+              color: '#555',
+              font: { size: 11 },
+              callback: (v) => v + '%',
+              stepSize: 25,
+            },
+            grid: { color: '#1e1e1e' },
+            border: { color: '#333' },
+          },
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#1a1a1a',
+            borderColor: '#333',
+            borderWidth: 1,
+            titleColor: '#888',
+            bodyColor: '#fff',
+            callbacks: {
+              title: ([ctx]) => formatTime(ctx.parsed.x),
+              label: (ctx) =>
+                ctx.datasetIndex === 0
+                  ? ` ${ctx.parsed.y}% predicted attention`
+                  : null,
+            },
+          },
+        },
+      },
+    });
+
+    return () => chartRef.current?.destroy();
+  }, [curve]);
+
+  if (!curve?.length) return null;
+
+  const dips = findDips(curve);
+
+  return (
+    <div className="prediction-chart-root">
+      <div className="prediction-canvas-wrapper">
+        <canvas ref={canvasRef} />
+      </div>
+
+      {dips.length > 0 && (
+        <div className="dip-row">
+          <span className="dip-label">Predicted dips</span>
+          {dips.map((d, i) => (
+            <span key={i} className="dip-chip">
+              {formatTime(d.start)}–{formatTime(d.end)}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {dips.length === 0 && (
+        <div className="dip-row">
+          <span className="dip-label no-dips">No significant dips predicted</span>
+        </div>
+      )}
+    </div>
+  );
+}
