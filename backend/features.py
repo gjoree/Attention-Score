@@ -43,10 +43,12 @@ def extract_features(video_path: str) -> list[dict]:
     )
 
     results = []
-    prev_gray   = None
-    prev_motion = 0.0
-    prev_rms    = 0.0
-    last_cut    = 0
+    prev_gray       = None
+    prev_motion     = 0.0
+    prev_rms        = 0.0
+    prev_brightness = 0.0
+    prev_saturation = 0.0
+    last_cut        = 0
 
     for t in range(duration):
         cap.set(cv2.CAP_PROP_POS_MSEC, t * 1000)
@@ -105,6 +107,13 @@ def extract_features(video_path: str) -> list[dict]:
         # Spread of hue values — colourful scenes score higher
         color_variety = float(np.std(hsv[:, :, 0]) / 90.0)  # hue std, max ~90 for full spectrum
 
+        # Excitement deltas — sudden flash/explosion/colour burst grabs attention
+        # Clamped to [0, 1]: only positive spikes count (brightening, not dimming)
+        brightness_delta  = float(max(0.0, brightness - prev_brightness))
+        saturation_delta  = float(max(0.0, saturation - prev_saturation))
+        prev_brightness   = brightness
+        prev_saturation   = saturation
+
         # ── Scene cut / staleness ─────────────────────────────────────────────
         is_cut = 1 if t in cut_seconds else 0
         if is_cut:
@@ -132,33 +141,36 @@ def extract_features(video_path: str) -> list[dict]:
         position = t / max(duration - 1, 1)
 
         results.append({
-            "t":                 t,
+            "t":                  t,
             # Motion
-            "motion":            round(motion, 4),
-            "motion_delta":      round(motion_delta, 4),
+            "motion":             round(motion, 4),
+            "motion_delta":       round(motion_delta, 4),
             # Face
-            "face_area":         round(face_area, 4),
-            "face_count":        face_count,
-            "face_centrality":   round(face_centrality, 4),
+            "face_area":          round(face_area, 4),
+            "face_count":         face_count,
+            "face_centrality":    round(face_centrality, 4),
             # Visual quality
-            "entropy":           round(entropy, 4),
-            "contrast":          round(contrast, 4),
-            "edge_density":      round(edge_density, 4),
-            "saturation":        round(saturation, 4),
-            "brightness":        round(brightness, 4),
-            "color_variety":     round(color_variety, 4),
+            "entropy":            round(entropy, 4),
+            "contrast":           round(contrast, 4),
+            "edge_density":       round(edge_density, 4),
+            "saturation":         round(saturation, 4),
+            "brightness":         round(brightness, 4),
+            "color_variety":      round(color_variety, 4),
+            # Excitement spikes (explosions, flashes, colour bursts)
+            "brightness_delta":   round(brightness_delta, 4),
+            "saturation_delta":   round(saturation_delta, 4),
             # Scene pacing
-            "is_cut":            is_cut,
-            "seconds_since_cut": seconds_since_cut,
-            "cut_rate_10s":      cut_rate_10s,
+            "is_cut":             is_cut,
+            "seconds_since_cut":  seconds_since_cut,
+            "cut_rate_10s":       cut_rate_10s,
             # Audio
-            "audio_rms":         round(audio_rms_raw, 4),
-            "audio_flux":        round(audio_flux, 4),
-            "audio_zcr":         round(audio_zcr, 4),
-            "spectral_centroid": round(spectral_centroid, 4),
-            "audio_delta":       round(audio_delta, 4),
+            "audio_rms":          round(audio_rms_raw, 4),
+            "audio_flux":         round(audio_flux, 4),
+            "audio_zcr":          round(audio_zcr, 4),
+            "spectral_centroid":  round(spectral_centroid, 4),
+            "audio_delta":        round(audio_delta, 4),
             # Context
-            "position":          round(position, 4),
+            "position":           round(position, 4),
         })
 
     cap.release()
