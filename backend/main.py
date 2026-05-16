@@ -8,6 +8,7 @@ from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
 from features import extract_features
+from gemini_predict import predict_with_gemini
 from model import predict_curve, train
 
 # ── App setup ─────────────────────────────────────────────────────────────────
@@ -133,16 +134,32 @@ async def predict(video_id: str):
     """Mode B: return predicted attention curve for a video."""
     conn = get_db()
     row = conn.execute(
-        "SELECT features_json, ready FROM video_features WHERE video_id=?", (video_id,)
+        "SELECT features_json, ready, filename FROM video_features WHERE video_id=?", (video_id,)
     ).fetchone()
     conn.close()
     if not row:
         raise HTTPException(404, "Video not found")
     if not row["ready"]:
         raise HTTPException(202, "Features still processing, try again in a few seconds")
+
     features = json.loads(row["features_json"])
-    curve = predict_curve(features)
-    return {"video_id": video_id, "curve": curve}
+
+    # Try Gemini first — it understands video content directly
+    video_file = next(Path("uploads").glob(f"{video_id}.*"), None)
+    curve = None
+    model_used = "rule-based"
+
+    if video_file:
+        duration = features[-1]["t"] + 1 if features else 60
+        curve = predict_with_gemini(str(video_file), duration)
+        if curve:
+            model_used = "gemini"
+
+    # Fall back to XGBoost / rule-based if Gemini unavailable or errored
+    if curve is None:
+        curve = predict_curve(features)
+
+    return {"video_id": video_id, "curve": curve, "model": model_used}
 
 
 # ── Sessions ──────────────────────────────────────────────────────────────────

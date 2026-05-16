@@ -8,6 +8,7 @@ const MODEL_URL =
 
 const SMOOTHING_WINDOW = 12; // frames (~400ms at 30fps)
 const SCORE_HISTORY_MS = 90_000; // keep 90 seconds in chart
+const PEAK_FLOOR = 80; // minimum denominator for normalization — avoids inflating scores before peak builds up
 
 export function useAttentionTracker(videoRef, canvasRef) {
   const [status, setStatus] = useState('initializing'); // initializing | ready | tracking | error
@@ -23,6 +24,7 @@ export function useAttentionTracker(videoRef, canvasRef) {
   const rafRef = useRef(null);
   const activeRef = useRef(false);
   const rawScoreBuffer = useRef([]);
+  const peakRef = useRef(PEAK_FLOOR); // tracks personal session max for normalization
 
   // ── Init MediaPipe ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -55,6 +57,8 @@ export function useAttentionTracker(videoRef, canvasRef) {
     if (!landmarkerRef.current || !videoRef.current) return;
     if (activeRef.current) return;
     activeRef.current = true;
+    peakRef.current = PEAK_FLOOR; // reset calibration for each new session
+    rawScoreBuffer.current = [];
     setStatus('tracking');
 
     function loop(ts) {
@@ -120,12 +124,16 @@ export function useAttentionTracker(videoRef, canvasRef) {
             rawScoreBuffer.current.length
         );
 
-        setCurrentScore(smooth);
+        // Update personal peak, then normalize so each person's ceiling = 100%
+        if (smooth > peakRef.current) peakRef.current = smooth;
+        const normalized = Math.min(100, Math.round(smooth / peakRef.current * 100));
+
+        setCurrentScore(normalized);
         setIndicators(indic);
 
         const now = Date.now();
         setScores((prev) => {
-          const entry = { time: now, score: smooth };
+          const entry = { time: now, score: normalized };
           const cutoff = now - SCORE_HISTORY_MS;
           return [...prev.filter((s) => s.time > cutoff), entry];
         });
@@ -172,10 +180,14 @@ function computeAttention(result) {
     bs[b.categoryName] = b.score;
   });
 
-  // Eyes: blend shapes give direct blink confidence (0=open, 1=closed)
+  // Eyes: MediaPipe blink score is ~0.05 even when eyes are wide open — remap
+  // so that the natural open-eye baseline (0.05) maps to 1.0, and ~0.65 = closed.
+  const BLINK_OPEN   = 0.05;
+  const BLINK_CLOSED = 0.65;
+  const remapBlink = (v) => Math.max(0, Math.min(1, 1 - (v - BLINK_OPEN) / (BLINK_CLOSED - BLINK_OPEN)));
   const blinkL = bs['eyeBlinkLeft'] ?? 0;
   const blinkR = bs['eyeBlinkRight'] ?? 0;
-  const eyesOpen = 1 - (blinkL + blinkR) / 2;
+  const eyesOpen = (remapBlink(blinkL) + remapBlink(blinkR)) / 2;
 
   // Head pose from landmark geometry
   const headScore = computeHeadScore(result.faceLandmarks[0]);

@@ -39,6 +39,7 @@ export default function App() {
   const [predictedCurve, setPredictedCurve] = useState(null);
   const [isPredicting,   setIsPredicting]   = useState(false);
   const [predictError,   setPredictError]   = useState(null);
+  const [modelUsed,      setModelUsed]      = useState(null);
 
   // Webcam / session state
   const [webcamActive,   setWebcamActive]   = useState(false);
@@ -176,6 +177,7 @@ export default function App() {
     try {
       const data = await predictCurve(videoId);
       setPredictedCurve(data.curve);
+      setModelUsed(data.model ?? 'rule-based');
     } catch (err) {
       setPredictError('Prediction failed — is the backend running?');
       console.error(err);
@@ -323,7 +325,7 @@ export default function App() {
               </button>
               {predictedCurve && (
                 <span className="predict-badge">
-                  Model: {window.__modelType ?? 'rule-based'}
+                  {modelUsed === 'gemini' ? '✦ Gemini AI' : 'Rule-based'}
                 </span>
               )}
             </div>
@@ -435,7 +437,7 @@ export default function App() {
               <span className="mode-tag mode-b">MODE B</span>
               <button
                 className="clear-prediction"
-                onClick={() => setPredictedCurve(null)}
+                onClick={() => { setPredictedCurve(null); setModelUsed(null); }}
                 title="Clear prediction"
               >
                 ✕
