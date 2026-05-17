@@ -40,9 +40,9 @@ export async function pollVideoReady(videoId, onReady, intervalMs = 2000) {
   return () => clearInterval(timer); // returns cleanup fn
 }
 
-export async function predictCurve(videoId) {
-  return request('GET', `/videos/${videoId}/predict`);
-  // returns { video_id, curve: [{t, score}, ...] }
+export async function predictCurve(videoId, engine = 'gemini') {
+  return request('GET', `/videos/${videoId}/predict?engine=${engine}`);
+  // returns { video_id, curve: [{t, score}, ...], model: 'gemini'|'local' }
 }
 
 // ── Sessions ─────────────────────────────────────────────────────────────────

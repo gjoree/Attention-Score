@@ -36,7 +36,7 @@ function findDips(curve) {
   return dips;
 }
 
-export function PredictionChart({ curve }) {
+export function PredictionChart({ curve, problems, issue }) {
   const canvasRef = useRef(null);
   const chartRef  = useRef(null);
 
@@ -131,7 +131,8 @@ export function PredictionChart({ curve }) {
 
   if (!curve?.length) return null;
 
-  const dips = findDips(curve);
+  const useProblems = Array.isArray(problems) && problems.length > 0;
+  const dips        = useProblems ? [] : findDips(curve);
 
   return (
     <div className="prediction-chart-root">
@@ -139,7 +140,31 @@ export function PredictionChart({ curve }) {
         <canvas ref={canvasRef} />
       </div>
 
-      {dips.length > 0 && (
+      {issue && (
+        <div className="problem-card problem-card--issue">
+          <span className="problem-type">⚠ video issue</span>
+          <span className="problem-detail">{issue}</span>
+        </div>
+      )}
+
+      {useProblems ? (
+        <div className="problem-list">
+          <div className="problem-list-title">Problematic segments</div>
+          {problems.map((p, i) => (
+            <div key={i} className="problem-card">
+              <div className="problem-card-header">
+                <span className="problem-type">{p.type}</span>
+                <span className="problem-range">{formatTime(p.start)} – {formatTime(p.end)}</span>
+              </div>
+              <span className="problem-detail">{p.detail}</span>
+            </div>
+          ))}
+        </div>
+      ) : Array.isArray(problems) ? (
+        <div className="dip-row">
+          <span className="dip-label no-dips">No problematic segments detected</span>
+        </div>
+      ) : dips.length > 0 ? (
         <div className="dip-row">
           <span className="dip-label">Predicted dips</span>
           {dips.map((d, i) => (
@@ -148,9 +173,7 @@ export function PredictionChart({ curve }) {
             </span>
           ))}
         </div>
-      )}
-
-      {dips.length === 0 && (
+      ) : (
         <div className="dip-row">
           <span className="dip-label no-dips">No significant dips predicted</span>
         </div>

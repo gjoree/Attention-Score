@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from features import extract_features
 from gemini_predict import predict_with_gemini
-from model import predict_curve, train
+from model import predict_curve, train, _is_blank_frame
 
 # ── App setup ─────────────────────────────────────────────────────────────────
 
@@ -130,8 +130,11 @@ async def video_status(video_id: str):
 
 
 @app.get("/videos/{video_id}/predict")
-async def predict(video_id: str):
-    """Mode B: return predicted attention curve for a video."""
+async def predict(video_id: str, engine: str = "gemini"):
+    """
+    Mode B: return predicted attention curve for a video.
+    engine: 'gemini' (default) or 'local' (XGBoost / rule-based)
+    """
     conn = get_db()
     row = conn.execute(
         "SELECT features_json, ready, filename FROM video_features WHERE video_id=?", (video_id,)
@@ -143,23 +146,41 @@ async def predict(video_id: str):
         raise HTTPException(202, "Features still processing, try again in a few seconds")
 
     features = json.loads(row["features_json"])
-
-    # Try Gemini first — it understands video content directly
-    video_file = next(Path("uploads").glob(f"{video_id}.*"), None)
     curve = None
-    model_used = "rule-based"
+    model_used = "local"
 
-    if video_file:
-        duration = features[-1]["t"] + 1 if features else 60
-        curve = predict_with_gemini(str(video_file), duration)
-        if curve:
-            model_used = "gemini"
+    summary = None
 
-    # Fall back to XGBoost / rule-based if Gemini unavailable or errored
+    issue    = None
+    problems = []
+
+    if engine == "gemini":
+        video_file = next(Path("uploads").glob(f"{video_id}.*"), None)
+        if video_file:
+            duration = features[-1]["t"] + 1 if features else 60
+            result = predict_with_gemini(str(video_file), duration)
+            if result:
+                blank_count = sum(1 for f in features if _is_blank_frame(f))
+                blank_ratio = blank_count / len(features) if features else 0
+                gemini_avg  = sum(p["score"] for p in result["curve"]) / len(result["curve"]) if result["curve"] else 0
+
+                if blank_ratio >= 0.7 and gemini_avg > 20:
+                    print(f"[main] Gemini hallucinated (blank={blank_ratio:.0%}, gemini_avg={gemini_avg:.0f}) — overriding")
+                    curve      = predict_curve(features)
+                    issue      = f"Gemini hallucinated content ({blank_ratio:.0%} of frames are blank). Showing local model result instead."
+                    problems   = [{"start": 0, "end": duration, "type": "blank screen",
+                                   "detail": "Video is mostly blank — Gemini's result was overridden by local analysis."}]
+                    model_used = "local"
+                else:
+                    curve      = result["curve"]
+                    issue      = result.get("issue")
+                    problems   = result.get("problems", [])
+                    model_used = "gemini"
+
     if curve is None:
         curve = predict_curve(features)
 
-    return {"video_id": video_id, "curve": curve, "model": model_used}
+    return {"video_id": video_id, "curve": curve, "model": model_used, "issue": issue, "problems": problems}
 
 
 # ── Sessions ──────────────────────────────────────────────────────────────────
