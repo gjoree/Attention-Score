@@ -114,10 +114,10 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
 Backend will be available at `http://localhost:8000`.
 
-> IMPORTANT: For your Gemini integration to work, you have to set up an environment variable with your Gemini API key.
+> IMPORTANT: For your Gemini integration to work, add your Gemini API key to `backend/.env`.
 
 ```bash
-export GEMINI_API_KEY="your_api_key_here"
+GEMINI_API_KEY="your_api_key_here"
 ```
 
 #### 4. Start frontend
