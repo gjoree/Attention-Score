@@ -116,8 +116,13 @@ Backend will be available at `http://localhost:8000`.
 
 > IMPORTANT: For your Gemini integration to work, add your Gemini API key to `backend/.env`.
 
+
+Inside `/backend` directory find the `.env.example` file, either copy it and rename the new file `.env`, or directly rename the original. 
+
+Inside the `/backend/.env` file write your **GEMINI API KEY** by replacing the placeholder.
+
 ```bash
-GEMINI_API_KEY="your_api_key_here"
+GEMINI_API_KEY="<your_api_key_here>"
 ```
 
 #### 4. Start frontend
@@ -166,6 +171,7 @@ Allow camera access in your browser when prompted.
 In Chrome: click the camera icon in the address bar.
 
 **"Features still processing"**
+
 Feature extraction takes 10–20 seconds per minute of video.
 Wait for the **"Features ready"** badge in the header.
 
