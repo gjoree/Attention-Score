@@ -124,7 +124,8 @@ def predict_curve(features: list[dict]) -> list[dict]:
 
 
 def _rule_based(f: dict) -> float:
-    """Fallback before first training — uses known attention correlates."""
+    """Fallback before first training — uses known attention correlates.
+    Note: kids/animals not detectable from raw video features — use Gemini engine for those signals."""
     # Excitement spike: sudden brightness/colour burst (explosion, flash) gets a bonus
     # regardless of whether faces are present
     excitement = min(1.0, f.get("brightness_delta", 0) * 4 + f.get("saturation_delta", 0) * 3)
