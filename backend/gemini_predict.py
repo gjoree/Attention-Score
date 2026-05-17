@@ -1,11 +1,33 @@
 import json
-import os
 import re
 import time
+from pathlib import Path
 
 import cv2
 import google.generativeai as genai
 from scipy.ndimage import gaussian_filter1d
+
+ENV_PATH = Path(__file__).resolve().parent / ".env"
+
+
+def _read_env_value(key: str) -> str | None:
+    if not ENV_PATH.exists():
+        return None
+
+    for raw_line in ENV_PATH.read_text().splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+
+        name, value = line.split("=", 1)
+        name = name.strip()
+        if name.startswith("export "):
+            name = name[len("export "):].strip()
+
+        if name == key:
+            return value.strip().strip("\"'")
+
+    return None
 
 
 def _local_blank_ratio(video_path: str, sample_count: int = 12) -> float:
@@ -42,7 +64,7 @@ def predict_with_gemini(video_path: str, duration: int) -> dict | None:
       {"curve": [...], "status": "ok"|"issue", "issue": "...", "problems": [...]}
     or None on failure.
     """
-    api_key = os.environ.get("GEMINI_API_KEY")
+    api_key = _read_env_value("GEMINI_API_KEY")
     if not api_key:
         return None
 
