@@ -85,8 +85,8 @@ export function PredictionChart({ curve, problems, issue }) {
             type: 'linear',
             title: { display: false },
             ticks: {
-              color: '#555',
-              font: { size: 11 },
+              color: '#bbb',
+              font: { size: 12 },
               callback: (v) => formatTime(v),
               maxTicksLimit: 10,
             },
@@ -97,8 +97,8 @@ export function PredictionChart({ curve, problems, issue }) {
             min: 0,
             max: 100,
             ticks: {
-              color: '#555',
-              font: { size: 11 },
+              color: '#bbb',
+              font: { size: 12 },
               callback: (v) => v + '%',
               stepSize: 25,
             },
@@ -112,7 +112,7 @@ export function PredictionChart({ curve, problems, issue }) {
             backgroundColor: '#1a1a1a',
             borderColor: '#333',
             borderWidth: 1,
-            titleColor: '#888',
+            titleColor: '#ccc',
             bodyColor: '#fff',
             callbacks: {
               title: ([ctx]) => formatTime(ctx.parsed.x),
